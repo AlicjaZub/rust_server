@@ -60,7 +60,6 @@ impl ThreadPool {
         let (sender, receiver) = channel();
         let receiver = Arc::new(Mutex::new(receiver));
         let mut workers: Vec<Worker> = Vec::with_capacity(size);
-        // create a size number of workers in a vector
 
         for n in 0..size {
             workers.push(Worker::new(n, Arc::clone(&receiver)));
@@ -81,8 +80,7 @@ impl ThreadPool {
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-
-    let pool = ThreadPool::new(4);
+    let pool = ThreadPool::new(num_cpus::get());
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
@@ -97,19 +95,29 @@ fn main() {
 
 fn handle_connection(mut stream: TcpStream) {
     let buf_reader = BufReader::new(&stream);
-    let request_line = buf_reader.lines().next().unwrap().unwrap();
+    let request_line = match buf_reader.lines().next() {
+        Some(Ok(line)) => line,
+        Some(Err(e)) => {
+            println!("Error reading from stream: {}", e);
+            return;
+        }
+        None => {
+            println!("No request received.");
+            return;
+        }
+    };
 
     let path = match request_line.split_whitespace().nth(1) {
         Some("/") => "out/index.html".to_string(),
-        // Some(path) => {
-        //     let sanitized_path = path.trim_start_matches('/');
-        //     let full_path = format!("out/{}", sanitized_path);
-        //     if fs::metadata(&full_path).is_ok() {
-        //         full_path
-        //     } else {
-        //         "out/404.html".to_string()
-        //     }
-        // }
+        Some(path) => {
+            let sanitized_path = path.trim_start_matches('/');
+            let full_path = format!("out/{}", sanitized_path);
+            if fs::metadata(&full_path).is_ok() {
+                full_path
+            } else {
+                "out/404.html".to_string()
+            }
+        }
         _ => "out/404.html".to_string(),
     };
     let content = fs::read(&path).unwrap_or_else(|_| fs::read("out/404.html").unwrap());
@@ -123,16 +131,6 @@ fn handle_connection(mut stream: TcpStream) {
 
     stream.write_all(response.as_bytes()).unwrap();
     stream.write_all(&content).unwrap();
-
-    // let (status_line, filename) = match &request_line[..] {
-    //     "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "index.html"),
-
-    //     _ => ("HTTP/1.1 404 NOT FOUND", "404.html"),
-    // };
-    // let contents = fs::read_to_string(filename).unwrap();
-    // let length = contents.len();
-    // let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
-    // stream.write_all(response.as_bytes()).unwrap();
 }
 
 fn get_content_type(path: &str) -> &'static str {
