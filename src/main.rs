@@ -37,7 +37,12 @@ async fn handle_connection(mut stream: TcpStream) {
 
 async fn respond_to_request(line: &str, stream: &mut TcpStream) -> Result<()> {
     let request_path = line.split_whitespace().nth(1).unwrap_or("/");
-    let sanitized_path = request_path.strip_prefix("/").unwrap_or(request_path);
+    let sanitized_path = if request_path == "/" {
+        "index.html"
+    } else {
+        request_path.trim_start_matches('/')
+    };
+
     let full_path = format!("out/{}", sanitized_path);
 
     let content = if let Ok(data) = read(&full_path).await {
