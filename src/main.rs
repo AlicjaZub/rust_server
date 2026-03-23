@@ -8,7 +8,7 @@ async fn main() -> Result<()> {
 
     loop {
         let (socket, addr) = listener.accept().await?;
-        println!("[+] Connction from {}", addr);
+        println!("[+] Connection from {}", addr);
 
         tokio::spawn(async move {
             handle_connection(socket).await;

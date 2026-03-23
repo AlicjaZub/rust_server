@@ -91,3 +91,88 @@ sudo systemctl start myapp.service
 sudo systemctl status myapp.service
 sudo journalctl -u myapp.service
 ```
+
+
+# 🚀 Rust + Next.js Production Server (Linux + NGINX + systemd)
+
+This project runs a **Rust backend + Next.js frontend** on a Linux server with:
+
+- ✅ Auto-restart using `systemd`
+- ✅ Reverse proxy using NGINX
+- ✅ HTTPS via Let's Encrypt
+- ✅ Auto-deployment via Git
+
+---
+
+## 🧱 Architecture
+---
+
+## ⚙️ Prerequisites
+
+- Linux server (Ubuntu recommended)
+- Domain pointing to your server IP
+- Ports forwarded:
+  - 80 (HTTP)
+  - 443 (HTTPS)
+
+---
+
+## 📦 Install Dependencies
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install git curl build-essential -y
+
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+curl https://sh.rustup.rs -sSf | sh
+. "$HOME/.cargo/env"
+
+git clone git@github.com:AlicjaZub/rust_server.git
+cd rust_server
+
+cargo build --release
+
+SYSTEMD
+
+sudo vim /etc/systemd/system/dandraper.service
+
+[Unit]
+Description=Dan Draper Website
+After=network.target
+
+[Service]
+ExecStart=/home/..minipc../rust_server/target/release/rust_server
+WorkingDirectory=/home/..minipc../rust_server
+Restart=always
+RestartSec=5
+User=..minipc..
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=multi-user.target
+
+sudo systemctl daemon-reload
+sudo systemctl enable dandraper
+sudo systemctl start dandraper
+
+sudo systemctl status dandraper
+
+
+NGINX 
+
+sudo apt install nginx -y
+sudo vim /etc/nginx/sites-available/default
+
+
+sudo nginx -t
+sudo systemctl restart nginx
+
+sudo apt install certbot -y
+# sudo apt install certbot python3-certbot-nginx -y
+
+sudo certbot --nginx -d dandraper.art
+
+
+AUTO DEPLOYMENT
